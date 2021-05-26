@@ -99,7 +99,10 @@ log_meta = pd.read_excel(path)
 # In the metadata the coordinates of the stations are associated with the names of the columns
 # Columns 5 and 6 contains the coordinates of the stations
 
-
+log_coord = log_meta.loc[:,['LOCATION', 'X', 'Y']]
+#loggers_GW.columns[i] is located in the LOCATION column of log_coord,
+#the same for loggers_OW
+# Transform the coordinates into WGS1984?
 
 ## TELEMETRIE Dataframe
 telem_OW = pd.DataFrame({"date": date})
@@ -141,4 +144,13 @@ tel_meta = pd.read_excel(path, sheet_name = 0)
 #The file has two sheets, the first one who has more information
 # Columns 2 and 3 contains the coordinates of the stations
 
+tel_coord = tel_meta.iloc[:,[0,1,2]]
+# Transform the coordinates into WGS1984?
+
+from pyproj import Proj, transform
+
+inProj = Proj(init='epsg:4289') #Amersfoort, dont know if it is the correct one
+outProj = Proj(init='epsg:4326')
+tel_coord[:,1:] = transform(inProj,outProj,tel_coord[:,1:])
+print(tel_coord)
 
