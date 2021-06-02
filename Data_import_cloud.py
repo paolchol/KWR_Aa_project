@@ -40,117 +40,176 @@ def create_list_files(listfiles, path, extention):
                 listfiles.append(root + '\\' + file)
     return listfiles
 
-def create_logger_dataframe(list_files, df):
-    for file in list_files:
-        load = pd.read_csv(file, sep = ';', header = 0)
-        load = load.iloc[:,:2]
-        daily = daily_mean(load, 0)
-        x = daily.index.strftime('%Y-%m-%d')
-        y = daily.values
-        name = os.path.basename(file)[1:-4]   
-        df[name] = np.nan
-        df.loc[df['date'].isin(x), name] = y[x.isin(df.iloc[:,0])]
+def create_logger_dataframe(list_files, df, threshold, NAs):
+    #In the original file
+    #First column: date and time
+    #Second column: measurement
+    #The output presents:
+    #   - Rows: daily dates 
+    #   - Columns: stations' daily observations
+    fields = ['Tijd', 'DIVER (m tov NAP)']
+    for i, file in enumerate(list_files, start=0):
+        if (NAs.iloc[i,0]/100)*NAs.iloc[i,1] >= threshold:
+            #The stations are selected based on the length of their
+            #observations' time series
+            load = pd.read_csv(file, sep = ";", usecols=fields)
+            daily = daily_mean(load, 0)
+            x = daily.index.strftime('%Y-%m-%d')
+            y = daily.values
+            name = os.path.basename(file)[1:-4]
+            df[name] = np.nan
+            df.loc[df['date'].isin(x), name] = y[x.isin(df.iloc[:,0])]
+            print(f'Iteration n.: {i+1}\tStations added: {len(df. columns)-1}')
     return df
 
-# Arrange the paths to all the files in the cloud
-## Files from LOGGERS
+def count_NAs(list_files):
+    #In the original files are not present NAs, when a data is not
+    #available the corresponding row is missing. So, before counting the missing
+    #data, they have to be grouped by day. This is done by the function daily_mean
+    #After creating the daily aggregation of the data, the missing values are counted
+    #The output presents:
+    #   - Index: name of the file/station
+    #   - NA_daily_prec: percentage of NAs in the station's daily time series
+    #   - length: length of the daily time series
+    fields = ['Tijd', 'DIVER (m tov NAP)']
+    file_index = []
+    for file in list_files:
+        file_index.append(os.path.basename(file)[1:-4])
+    NAs = pd.DataFrame(index = file_index, columns = ['NA_daily_perc','lenght'])
+    for i, file in enumerate(list_files, start = 0):
+        print(i, file)
+        load = pd.read_csv(file, sep = ";", usecols=fields)
+        daily = daily_mean(load, 0)
+        NAs.iloc[i,0] = round(daily.isna().sum().iloc[0]/len(daily), 3)*100
+        NAs.iloc[i,1] = len(daily)
+    return NAs
+
+
+# LOGGERS Dataframe creation
+## Arrange the paths to the files in the cloud
 path = r'\\nwg.local\dfs\projectdata\P402045_238\ReceivedData\DataNZV\LOGGERS\LOGGERS\GW'
 log_GW_files = []
 log_GW_files = create_list_files(log_GW_files, path, '.csv')
+#Extract their names
+station_names = []
+for file in log_GW_files:
+    station_names.append(os.path.basename(file)[1:-4])
 
-path = r'\\nwg.local\dfs\projectdata\P402045_238\ReceivedData\DataNZV\LOGGERS\LOGGERS\OW'
-log_OW_files = []
-log_OW_files = create_list_files(log_OW_files, path, '.csv')
+## Count the NAs in each station's time series
+# start = time.time()
+# NA_count = count_NAs(log_GW_files)
+# end = time.time()
+# print('Elapsed time  - NAs count')
+# print(end - start)
+# #It took 3000 seconds
+# #Save as a .txt
+# path = r'D:\Users\colompa\Documents\KWR_Internship\Data\NAs_count.txt'
+# NA_count.to_csv(path_or_buf = path, sep = "\t", index = True)
 
-## Files from TELEMETRIE
-path = r'\\nwg.local\dfs\projectdata\P402045_238\ReceivedData\DataNZV\TELEMETRIE\TELEMETRIE'
-tel_OW_files = []
-tel_OW_files = create_list_files(tel_OW_files, path, '.csv')
+#Load the NAs' count saved before
+path = r'D:\Users\colompa\Documents\KWR_Internship\Data\NAs_count.txt'
+NA_count_up = pd.read_table(path)
+NA_count_up.index = NA_count_up.iloc[:,0]; NA_count_up.index.names = ['Station']
+NA_count_up.drop('Unnamed: 0', axis=1, inplace=True)
 
+## LOGGERS metadata
+path = r'\\nwg.local\dfs\projectdata\P402045_238\ReceivedData\DataNZV\LOGGERS\LOGGERS\Metadata_loggers_OW_GW.xlsx'
+log_meta = pd.read_excel(path)
+#In the metadata the coordinates of the stations are associated with the names of the columns
+#columns 5 and 6 contains the coordinates of the stations
+
+### Select only the metadata for the stations whom have a file in the folder
+log_meta = log_meta.loc[log_meta['LOCATION'].isin(station_names),:]
+
+### Select only the files for which we have metadata
+indexes = np.array(NA_count_up.index.isin(log_meta['LOCATION']))
+indexes = np.where(indexes == True)[0]
+log_GW_files_new = []; station_names_new = []
+for i in range(len(indexes)):
+    log_GW_files_new.append(log_GW_files[indexes[i]])
+    station_names_new.append(station_names[indexes[i]])
+NA_count_up = NA_count_up[NA_count_up.index.isin(log_meta['LOCATION'])]
+log_GW_files = log_GW_files_new; del log_GW_files_new
+station_names = station_names_new; del station_names_new
+
+## Define the time threshold
+#Extract starting and ending dates
+log_dates = log_meta[['LOCATION','START','EIND']]
+log_dates.loc[:,'EIND'].fillna(pd.to_datetime('11-11-2020'), inplace = True)
+log_dates.loc[:,'START'] = pd.to_datetime(log_dates.loc[:,'START'])
+
+round(max(log_dates.loc[:,'EIND']-log_dates.loc[:,'START']).days/365) #42 years (not cleaned)
+s = round(len(log_dates)*10/100) #number of stations to extract
+delta = log_dates.loc[:,'EIND']-log_dates.loc[:,'START']
+#"Clean" the deltas by considering the missing data percentage
+delta_clean = delta.dt.days*(NA_count_up.iloc[:,0].values/100)
+mean_delta = sum(sorted(delta_clean)[-s:])/s
+# threshold = round(mean_delta) #7882 days
+threshold = 20*365 #20 years threshold
+print(f'Threshold: {threshold} days, {round(threshold/365)} \
+years\nNumber of stations which satisfy the threshold: \
+{len(delta_clean[delta_clean >= threshold])}')
+#Threshold: 7882 days, 22 years
+#Number of stations which satisfy the threshold: 8
+
+#We can decrease the threshold in order to have more stations, for example:
+#Threshold: 7300 days, 20 years
+#Number of stations which satisfy the threshold: 12
+
+## Dataframe construction
+### Date range setting
+#1980-2020 to start, then we can change the range
+start = datetime.datetime(1980, 1, 1)
+end = datetime.datetime(2020, 11, 11) #the loggers data end at 11/11/2020
+date = pd.date_range(start = start, end = end)
+date = date.strftime('%Y-%m-%d')
+
+### Actual dataframe construction
+loggers_GW = pd.DataFrame({"date": date})
+start = time.time()
+loggers_GW = create_logger_dataframe(log_GW_files, loggers_GW, threshold, NA_count_up)
+end = time.time()
+print('Elapsed time  - Loggers GW dataframe creation')
+print(end - start)
+#In create_loggers_dataframe, the threshold on the minimum series length is used
+#to select only station who have at least that number of measurements.
+#It took 38 seconds to create a dataframe with a 22 years threshold
+
+## Extract the coordinates and visualize the stations
+log_coord = log_meta.loc[:,['LOCATION', 'X', 'Y']]
+log_coord.rename(columns = {log_coord.columns[0]: 'station'}, inplace = True)
+#The name of the station is located in the LOCATION column of log_coord
+
+#Transform the coordinates into WGS1984
+from pyproj import Proj, transform
+
+inProj = Proj('epsg:28992') #Amersfoort, dont know if it is the correct one
+outProj = Proj('epsg:4326')
+for i in range(len(log_coord)):
+    log_coord.iloc[i,1:] = transform(inProj,outProj,log_coord.iloc[i,1],log_coord.iloc[i,2])
+print(log_coord)
+log_coord.rename(columns = {log_coord.columns[1]: 'Y', log_coord.columns[2]: 'X'}, inplace = True)
+
+### Extract the stations that satisfy the threshold
+log_coord_thre = log_coord[delta_clean >= threshold]
+
+# Add a column to both log_coord with the actual length of the time series
+#(NA*length, in years)
+
+#Export as .txt files
+path = r'D:\Users\colompa\Documents\KWR_Internship\Data\log_coord.txt'
+log_coord.to_csv(path_or_buf = path, sep = "\t", index = False)
+path = r'D:\Users\colompa\Documents\KWR_Internship\Data\log_coord_thre.txt'
+log_coord_thre.to_csv(path_or_buf = path, sep = "\t", index = False)
+
+
+
+# Extraction data
+# Arrange the paths to the files in the cloud
 ## File from D2extraction
 path = r'\\nwg.local\dfs\projectdata\P402045_238\ReceivedData\DataNZV\D2extraction\Singlepoint'
 extr_file = []
 extr_file = create_list_files(extr_file, path, '.csv')
 
-# Dataframes creation
-## Date range setting
-#   1980-2020 to start, then we can change the range
-start = datetime.datetime(1980, 1, 1)
-end = datetime.datetime(2020, 12, 31)
 
-date = pd.date_range(start = start, end = end)
-date = date.strftime('%Y-%m-%d')
-
-## LOGGERS Dataframe
-loggers_GW = pd.DataFrame({"date": date})
-loggers_OW = pd.DataFrame({"date": date})
-
-start = time.time()
-loggers_GW = create_logger_dataframe(log_GW_files, loggers_GW)
-end = time.time()
-print('Elapsed time  - For-loop Loggers GW creation')
-print(end - start)
-
-loggers_OW = create_logger_dataframe(log_OW_files, loggers_OW)
-
-### LOGGERS metadata
-path = r'\\nwg.local\dfs\projectdata\P402045_238\ReceivedData\DataNZV\LOGGERS\LOGGERS\Metadata_loggers_OW_GW.xlsx'
-log_meta = pd.read_excel(path)
-# In the metadata the coordinates of the stations are associated with the names of the columns
-# Columns 5 and 6 contains the coordinates of the stations
-
-log_coord = log_meta.loc[:,['LOCATION', 'X', 'Y']]
-#loggers_GW.columns[i] is located in the LOCATION column of log_coord,
-#the same for loggers_OW
-# Transform the coordinates into WGS1984?
-
-## TELEMETRIE Dataframe
-telem_OW = pd.DataFrame({"date": date})
-
-start = time.time()
-for file in tel_OW_files:
-    load = pd.read_csv(file, sep = ';', header = 0)
-    #Remove the first row and transform the data columns into float
-    load = load.iloc[1:,:]
-    for i in range(1,len(load.columns)):
-        load.iloc[:,i] = pd.to_numeric(load.iloc[1:,i].str.replace(',', '.'))
-    
-    #Take the daily mean of the data for each column in input
-    daily_data = daily_mean(load, 0)
-    daily_data.index
-    for station in daily_data.columns:
-        if station in telem_OW.columns:
-            #Add the data in the same column based on the date
-            x = daily_data.index.strftime('%Y-%m-%d') #Extract the date and change date format
-            y = daily_data.loc[:,station].values   #Extract the data
-            
-            telem_OW.loc[telem_OW['date'].isin(x), station] = y[x.isin(telem_OW.iloc[:,0])]
-        else:
-            #Create a new column and add the data based on the date
-            x = daily_data.index.strftime('%Y-%m-%d')
-            y = daily_data.loc[:,station].values
-            
-            telem_OW[station] = np.nan   #Create a new column with the name of the station
-            telem_OW.loc[telem_OW['date'].isin(x), station] = y[x.isin(telem_OW.iloc[:,0])]
-
-end = time.time()
-print('Elapsed time  - For-loop TELEMETRIE creation')
-print(end - start)
-#Memory error, but the code works
-        
-### TELEMETRIE metadata
-path = r'\\nwg.local\dfs\projectdata\P402045_238\ReceivedData\DataNZV\TELEMETRIE\TELEMETRIE\Metadata_OW_telemetrie.xlsx'
-tel_meta = pd.read_excel(path, sheet_name = 0)
-#The file has two sheets, the first one who has more information
-# Columns 2 and 3 contains the coordinates of the stations
-
-tel_coord = tel_meta.iloc[:,[0,1,2]]
-# Transform the coordinates into WGS1984?
-
-from pyproj import Proj, transform
-
-inProj = Proj(init='epsg:4289') #Amersfoort, dont know if it is the correct one
-outProj = Proj(init='epsg:4326')
-tel_coord[:,1:] = transform(inProj,outProj,tel_coord[:,1:])
-print(tel_coord)
 
