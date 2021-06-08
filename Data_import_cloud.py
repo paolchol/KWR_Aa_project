@@ -1,4 +1,4 @@
-☺# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 Data import from KWR's cloud
 
@@ -245,7 +245,7 @@ def daily_extraction(station, name = 'data'):
         date = pd.date_range(start = start, end = station.index[i])
         new_year = pd.DataFrame({"date": date})
         if station.iloc[i] is None:
-            new_year[name] = nan
+            new_year[name] = np.nan
         else:
             daily = station.iloc[i]/num_days
             new_year[name] = daily
