@@ -112,7 +112,7 @@ NA_count_up = pd.read_table(path)
 NA_count_up.index = NA_count_up.iloc[:,0]; NA_count_up.index.names = ['Station']
 NA_count_up.drop('Unnamed: 0', axis=1, inplace=True)
 
-years_data = round(NA_count_up.iloc[:,0]/100*NA_count_up.iloc[:,1]/365)
+# years_data = round(NA_count_up.iloc[:,0]/100*NA_count_up.iloc[:,1]/365)
       
 ## LOGGERS metadata
 path = r'\\nwg.local\dfs\projectdata\P402045_238\ReceivedData\DataNZV\LOGGERS\LOGGERS\Metadata_loggers_OW_GW.xlsx'
@@ -145,6 +145,11 @@ s = round(len(log_dates)*10/100) #number of stations to extract to calculate the
 delta = log_dates.loc[:,'EIND']-log_dates.loc[:,'START']
 #"Clean" the deltas by considering the missing data percentage
 delta_clean = delta.dt.days*(NA_count_up.iloc[:,0].values/100)
+
+log_dates['delta'] = delta.dt.days/365
+log_dates['delta_clean'] = delta_clean/365
+
+
 mean_delta = sum(sorted(delta_clean)[-s:])/s
 # threshold = round(mean_delta) #7882 days
 threshold = 20*365 #20 years threshold
