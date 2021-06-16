@@ -50,4 +50,8 @@ def remove_outliers(df, fill = np.nan):
         
     return df
 
-log_out = remove_outliers(loggers)
+log_no_out = remove_outliers(loggers)
+check_outliers(log_no_out)
+
+path = r'D:\Users\colompa\Documents\KWR_Internship\Data\logger_GW_nooutliers.csv'
+log_no_out.to_csv(path_or_buf = path, sep = ",", index = True)

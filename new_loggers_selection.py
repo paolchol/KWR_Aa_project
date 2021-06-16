@@ -95,12 +95,8 @@ log_meta = pd.read_excel(path)
 log_meta = log_meta.loc[log_meta['LOCATION'].isin(station_names),:]
 
 ### Select only the files for which we have metadata
-#Load the NAs' count saved before
-path = r'D:\Users\colompa\Documents\KWR_Internship\Data\NAs_count.txt'
-NA_count_up = pd.read_table(path)
-NA_count_up.index = NA_count_up.iloc[:,0]; NA_count_up.index.names = ['Station']
-NA_count_up.drop('Unnamed: 0', axis=1, inplace=True)
-indexes = np.array(NA_count_up.index.isin(log_meta['LOCATION']))
+index_station = pd.DataFrame({'names': station_names})
+indexes = np.array(index_station['names'].isin(log_meta['LOCATION']))
 indexes = np.where(indexes == True)[0]
 log_GW_files_new = []; station_names_new = []
 for i in range(len(indexes)):
@@ -144,6 +140,7 @@ print(end - start)
 def filter_NAs(df, NA_threshold):
     #Compute the NA percentage in each df's column
     #If it is higher than the threshold, it removes the column from the dataframe
+    #NA_threshold has to be put in terms of percentage (e.g. 10)
     #Returns:
     #   - df without columns with NAs percentage higher than  NA_threshold
     #   - (dataframe containing the NA percentage for each column and if it has been removed or not)
@@ -186,7 +183,29 @@ log_clean_0720, max_na = keep_columns(log_clean_0720)
 path = r'D:\Users\colompa\Documents\KWR_Internship\Data\logger_GW_20072020_clean.csv'
 log_clean_0720.to_csv(path, sep = ',', index = True)
 
+# Get the positions of the selected GW stations
+#from the dataframe columns take the names and then select the rows in log_coord
 
+log_coord = log_meta.loc[:,['LOCATION', 'X', 'Y']]
+log_coord.rename(columns = {log_coord.columns[0]: 'station'}, inplace = True)
+
+#Transform the coordinates into WGS1984
+from pyproj import Proj, transform
+
+inProj = Proj('epsg:28992') #Amersfoort, dont know if it is the correct one
+outProj = Proj('epsg:4326')
+for i in range(len(log_coord)):
+    log_coord.iloc[i,1:] = transform(inProj,outProj,log_coord.iloc[i,1],log_coord.iloc[i,2])
+print(log_coord)
+#For some reason X and Y are inverted, so here I just change their columns
+log_coord.rename(columns = {log_coord.columns[1]: 'Y', log_coord.columns[2]: 'X'}, inplace = True)
+
+#Select only the positions of the selected GW stations
+log_coord = log_coord.loc[log_coord['station'].isin(loggers_nona.columns),:]
+
+#Export as a .txt file
+path = r'D:\Users\colompa\Documents\KWR_Internship\Data\log_coord_final.txt'
+log_coord.to_csv(path_or_buf = path, sep = "\t", index = False)
 
 # Visualization
 import plotly.express as ple
