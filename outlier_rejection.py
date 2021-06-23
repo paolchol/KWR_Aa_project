@@ -19,7 +19,7 @@ import numpy as np
 
 # Load the dataframe to clean
 
-path = r'D:\Users\colompa\Documents\KWR_Internship\Data\logger_GW_20072020_clean.csv'
+path = r'D:\Users\colompa\Documents\KWR_Internship\Data\logger_dataset\logger_GW_20072020_20col.csv'
 loggers = pd.read_csv(path, sep = ',', index_col=0)
 
 def check_outliers(df):
@@ -53,5 +53,8 @@ def remove_outliers(df, fill = np.nan):
 log_no_out = remove_outliers(loggers)
 check_outliers(log_no_out)
 
-path = r'D:\Users\colompa\Documents\KWR_Internship\Data\logger_GW_nooutliers.csv'
+path = r'D:\Users\colompa\Documents\KWR_Internship\Data\logger_dataset\logger_GW_nooutliers.csv'
 log_no_out.to_csv(path_or_buf = path, sep = ",", index = True)
+
+figure = px.line(log_no_out)
+plot(figure)

@@ -19,7 +19,7 @@ import numpy as np
 
 #Functions
 # Load the dataframe to fill
-path = r'D:\Users\colompa\Documents\KWR_Internship\Data\logger_GW_nooutliers.csv'
+path = r'D:\Users\colompa\Documents\KWR_Internship\Data\logger_dataset\logger_GW_nooutliers.csv'
 loggers = pd.read_csv(path, sep = ',', index_col = 0)
 
 # Compare different interpolation methods with the function DataFrame.interpolate()
@@ -28,7 +28,7 @@ means_trial = pd.DataFrame({'name': loggers.columns, 'original': loggers.mean().
 medians_trial = pd.DataFrame({'name': loggers.columns, 'original': loggers.median().values})
 std_trial = pd.DataFrame({'name': loggers.columns, 'original': loggers.std().values})
 for method in methods:
-    trial = loggers.interpolate(method, limit = 30) #max 30 consecutive days interpolated
+    trial = loggers.interpolate(median, limit = 30) #max 30 consecutive days interpolated
     means_trial[method] = trial.mean().values
     medians_trial[method] = trial.median().values
     std_trial[method] = trial.std().values
@@ -46,8 +46,8 @@ for i in range(2,len(medians_trial.columns)):
 #similar statistics to the original dataset
 
 # Create the new dataframe
-loggers_nona = loggers.interpolate('linear', limit = 30)
+loggers_nona = loggers.interpolate('linear', limit = 365)
 
 # Export the dataframe
-path = r'D:\Users\colompa\Documents\KWR_Internship\Data\logger_GW_noNA.csv'
+path = r'D:\Users\colompa\Documents\KWR_Internship\Data\logger_dataset\logger_GW_noNA_365.csv'
 loggers_nona.to_csv(path_or_buf = path, sep = ",", index = True)

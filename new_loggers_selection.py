@@ -32,8 +32,7 @@ import numpy as np
 def daily_mean(df, date_pos = 0):
     #Output: daily dates as index, daily mean as values 
     df.rename(columns = {df.columns[date_pos]: "date"}, inplace = True)
-    df.loc[:,'date'] = pd.to_datetime(df.loc[:,'date'])
-    df.loc[:,'date'] = df.loc[:,'date'].apply( lambda df: datetime.datetime(year=df.year, month=df.month, day=df.day))
+    df.loc[:,'date'] = pd.to_datetime(df.loc[:,'date'], format = '%d-%m-%Y %H:%M:%S')
     df.index = df.loc[:,'date']
     df.drop('date', axis=1, inplace=True)
     df_daily_avg = df.resample('1D').mean()
@@ -122,17 +121,14 @@ start_end = pd.DataFrame({"start_y": start_y, "end_y": end_y})
 # Generate the loggers dataframe between two dates
 # ================================================
 start = time.time()
-#loggers_0720 = get_loggers_two_dates(log_GW_files, 2007, 2020, start_end)
-loggers_0020 = get_loggers_two_dates(log_GW_files, 2000, 2020, start_end)
+loggers_0720 = get_loggers_two_dates(log_GW_files, 2007, 2020, start_end)
 end = time.time()
 print(f'Loggers GW dataframe creation\tElapsed time: {round((end - start)/60)} minutes')
 print(end - start)
 
 ## Save the dataframe
-# path = r'D:\Users\colompa\Documents\KWR_Internship\Data\logger_GW_20072020.csv'
+# path = r'D:\Users\colompa\Documents\KWR_Internship\Data\logger_dataset\logger_GW_20072020.csv'
 # loggers_0720.to_csv(path_or_buf = path, sep=",", index = False)
-# path = r'D:\Users\colompa\Documents\KWR_Internship\Data\logger_GW_20002020.csv'
-# loggers_0020.to_csv(path_or_buf = path, sep=",", index = False)
 
 ## Select only the columns which have less than 10% of missing values
 #10% of 20 years = 6 months
@@ -155,8 +151,8 @@ def filter_NAs(df, NA_threshold):
             NAs.iloc[i,1] = False
     return df, NAs
 
-path = r'D:\Users\colompa\Documents\KWR_Internship\Data\logger_GW_20072020.csv'
-loggers_0720 = pd.read_csv(path, sep = ",")
+# path = r'D:\Users\colompa\Documents\KWR_Internship\Data\logger_dataset\logger_GW_20072020.csv'
+# loggers_0720 = pd.read_csv(path, sep = ",")
 
 # log_clean_0020, NAs_0020 = filter_NAs(loggers_0020, 10)
 log_clean_0720, NAs_0720 = filter_NAs(loggers_0720, 10)
@@ -180,7 +176,7 @@ def keep_columns(df, how_many = 20):
 
 log_clean_0720, max_na = keep_columns(log_clean_0720)
 
-path = r'D:\Users\colompa\Documents\KWR_Internship\Data\logger_GW_20072020_clean.csv'
+path = r'D:\Users\colompa\Documents\KWR_Internship\Data\logger_dataset\logger_GW_20072020_20col.csv'
 log_clean_0720.to_csv(path, sep = ',', index = True)
 
 # Get the positions of the selected GW stations
@@ -201,18 +197,18 @@ print(log_coord)
 log_coord.rename(columns = {log_coord.columns[1]: 'Y', log_coord.columns[2]: 'X'}, inplace = True)
 
 #Select only the positions of the selected GW stations
-log_coord = log_coord.loc[log_coord['station'].isin(loggers_nona.columns),:]
+log_coord = log_coord.loc[log_coord['station'].isin(log_clean_0720.columns),:]
 
 #Export as a .txt file
-path = r'D:\Users\colompa\Documents\KWR_Internship\Data\log_coord_final.txt'
+path = r'D:\Users\colompa\Documents\KWR_Internship\Data\logger_dataset\log_coord_final.txt'
 log_coord.to_csv(path_or_buf = path, sep = "\t", index = False)
 
-# Visualization
-import plotly.express as ple
-from plotly.offline import plot
+# # Visualization
+# import plotly.express as ple
+# from plotly.offline import plot
 
-fig = ple.line(log_clean_0720.iloc[:,1:6], x = log_clean_0720.iloc[:,0], y = log_clean_0720.columns[1:6])
-plot(fig)
+# fig = ple.line(log_clean_0720.iloc[:,1:6], x = log_clean_0720.iloc[:,0], y = log_clean_0720.columns[1:6])
+# plot(fig)
 
 
 
