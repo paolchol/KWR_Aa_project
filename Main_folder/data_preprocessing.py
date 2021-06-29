@@ -12,6 +12,10 @@ List of the functions contained:
     - get_loggers_two_dates:
         Returns a dataframe containing the LOGGERS stations with a time series
         ending at 'end_year' on the columns
+    
+    # NA operations #
+    - check_NAs:
+        Returns 
     - filter_NAs:
         Computes the NA percentage in each df's column. If it is higher than
         the threshold, it removes the column from the dataframe
@@ -26,15 +30,23 @@ List of the functions contained:
     - remove_outliers:
         Removes the outliers in each column of a dataframe, by the means of 
         the IQR method
+    
+    # Spatial analysis #
+    - find_nearest_point:
+        Finds the nearest point to a specified point (point) from a set of
+        coordinates (tgpoints)
 
 @author: colompa
 """
 
-#Libraries
+#%% Libraries
 import os
 import pandas as pd
 import datetime
 import numpy as np
+import pyproj
+
+#%% General tasks
 
 def daily_mean(df, date_pos = 0):
     #Output: daily dates as index, daily mean as values 
@@ -88,6 +100,17 @@ def get_loggers_two_dates(list_files, start_year, end_year, dates):
             print(f'Iteration n.: {i+1}\tStations added: {len(df.columns)-1}')
     return df
 
+#%% NA operations
+
+def check_NAs(df):
+    count = 0
+    for column in df.columns:
+        NA_perc = round(df[column].isna().sum()/len(df[column]),3)*100
+        print(f'The column "{column}" has this percentage of NAs:\n{NA_perc}')
+        if NA_perc > 10:
+            count = count + 1
+    print(f'There are {count} columns which have more than 10% of missing values')
+
 def filter_NAs(df, NA_threshold):
     #Compute the NA percentage in each df's column
     #If it is higher than the threshold, it removes the column from the dataframe
@@ -121,6 +144,8 @@ def keep_columns(df, how_many = 20):
     df.drop(columns = 'date', inplace = True)
     return df, max(keep)
 
+#%% Outlier rejection
+
 def check_outliers(df):
     for column in df.columns:
         Q1 = np.nanpercentile(df[column], 25)
@@ -131,6 +156,7 @@ def check_outliers(df):
         print(f'Column: {column}')
         print(f'Number of upper outliers: {sum(df[column] > upper_limit)}')
         print(f'Number of lower outliers: {sum(df[column] < lower_limit)}')
+        print(f'Percentage of outliers: {(sum(df[column] > upper_limit) + sum(df[column] < lower_limit))/len(df[column])}')
 
 def remove_outliers(df, fill = np.nan):
     for column in df.columns:
@@ -147,4 +173,25 @@ def remove_outliers(df, fill = np.nan):
         
     return df
 
+#%% Spatial analysis
 
+def find_nearest_point(point, tgpoints, namelat = 'Lat', namelon = 'Lon', namepoint = 'label'):
+    # This function finds the nearest point to a specified point (point) from
+    # a set of coordinates (tgpoints)
+    #Define the system
+    geod = pyproj.Geod(ellps='WGS84')
+    #Create a dataframe containing the set points
+    df = pd.DataFrame(point)
+    lat0 = point[namelat]; lon0 = point[namelon]
+    lst = []
+    for lat1, lon1 in zip(tgpoints[namelat], tgpoints[namelon]):
+        _, _, distance = geod.inv(lon0, lat0, lon1, lat1)
+        lst.append(distance/1e3)
+        df_dist = pd.DataFrame(lst, columns=['dist'])
+        idx_min = np.argmin(df_dist)
+        
+    df.loc['target_name'] = tgpoints.loc[idx_min, namepoint]
+    df.loc['target_lat'] = tgpoints.loc[idx_min, namelat]
+    df.loc['target_lon'] = tgpoints.loc[idx_min, namelon]
+    df.loc['distance'] = df_dist.iloc[idx_min].values
+    return df.T
