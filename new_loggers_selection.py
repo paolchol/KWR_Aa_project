@@ -39,6 +39,14 @@ def daily_mean(df, date_pos = 0):
     #other method: df.groupby(df.index.date).mean()
     return df_daily_avg
 
+def daily_mean_index(df):
+    #Output: daily dates as index, daily mean as values 
+    df.index = pd.to_datetime(df.index, format = '%d-%m-%Y %H:%M:%S')
+    df_daily_avg = df.resample('1D').mean()
+    #other method: df.groupby(df.index.date).mean()
+    return df_daily_avg
+
+
 def create_list_files(listfiles, path, extention):
     #Creates a list containing the paths of the file to import
     for root, dirs, files in os.walk(path):
@@ -77,8 +85,7 @@ def get_loggers_two_dates(list_files, start_year, end_year, dates):
 # LOGGERS Dataframe creation
 ## Arrange the paths to the files in the cloud
 path = r'\\nwg.local\dfs\projectdata\P402045_238\ReceivedData\DataNZV\LOGGERS\LOGGERS\GW'
-log_GW_files = []
-log_GW_files = create_list_files(log_GW_files, path, '.csv')
+log_GW_files = create_list_files(path, '.csv')
 #Extract their names
 station_names = []
 for file in log_GW_files:
