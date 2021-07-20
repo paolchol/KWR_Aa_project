@@ -5,8 +5,8 @@ Created on Tue Jun 29 14:11:24 2021
 @author: colompa
 """
 
-import pickle as plk
+import pickle as pkl
 
-plk.dump(Fs_sel, open('ssa_value.p', 'wb'))
+pkl.dump(Fs_sel, open('ssa_value.p', 'wb'))
 
-fs_temp = plk.load(open('ssa_value.p', 'rb'))
+fs_temp = pkl.load(open('ssa_value.p', 'rb'))

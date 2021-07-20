@@ -15,7 +15,7 @@ Goal of this script:
 import pandas as pd
 import matplotlib.pyplot as plt
 import time
-from SSA_class import SSA
+from class_SSA import SSA
 
 #%% Functions and class
 
@@ -567,6 +567,8 @@ import pickle as pkl
 pkl.dump(SSA_results, open('SSA_components.p', 'wb'))
 
 gg = pkl.load(open('SSA_components.p', 'rb'))
+
+pkl.dump(gg, open('SSA_information.p', 'wb'))
 
 
 

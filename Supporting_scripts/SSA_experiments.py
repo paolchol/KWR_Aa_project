@@ -14,7 +14,7 @@ SSA Time series decomposition
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from SSA_class import SSA
+from class_SSA import SSA
 
 path = r'D:\Users\colompa\Documents\KWR_Internship\Data\after_data_prep\logger_GW_noNA.csv'
 loggers = pd.read_csv(path, sep = ',', index_col = 0)
