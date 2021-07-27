@@ -39,7 +39,7 @@ List of the functions contained:
         Finds the nearest point to a specified point (point) from a set of
         coordinates (tgpoints)
     
-    # SSA analysis #
+    # SSA analysis and operations #
     - plot_Wcorr_Wzomm:
         Plots the W-Correlation matrix already with the selected zoom and a
         standard title
@@ -122,14 +122,24 @@ def create_dataframe(var_, ex_df1, ex_df2, close1, close2, name1 = 'prec', name2
         ex_st = ex_df[ex_st_name]
         return ex_st
     
+    def get_xy(ex_df, var_, start, end):
+        t = pd.to_datetime(ex_df.index) == var_.index[start]
+        x = [x for x, i in enumerate(t) if i]
+        t = pd.to_datetime(ex_df.index) == var_.index[end - 1]
+        y = [y+1 for y, i in enumerate(t) if i]
+        return x, y
+    
     ex_st1 = get_st(var_, ex_df1, close1)
     ex_st2 = get_st(var_, ex_df2, close2)
+    #Get the data from starting to ending non-missing values
     start = var_.index.get_loc(var_.first_valid_index())
     end = var_.index.get_loc(var_.last_valid_index()) + 1
     model_df = pd.DataFrame()
-    model_df['var'] = var_[start:end]        
-    model_df[name1] = ex_st1[start:end].values
-    model_df[name2] = ex_st2[start:end].values
+    model_df[var_.name] = var_[start:end]
+    x, y = get_xy(ex_st1, var_, start, end)
+    model_df[name1] = ex_st1[x[0]:y[0]].values
+    x, y = get_xy(ex_st2, var_, start, end)
+    model_df[name2] = ex_st2[x[0]:y[0]].values
     return model_df
 
 #%% NA operations
@@ -229,7 +239,7 @@ def find_nearest_point(point, tgpoints, namelat = 'Lat', namelon = 'Lon', namepo
     df.loc['distance'] = df_dist.iloc[idx_min].values
     return df.T
 
-#%% SSA Analysis
+#%% SSA Analysis and operations
 
 def plot_Wcorr_Wzomm(SSA_object, name, num = 0):
     if(num == 0):
@@ -283,3 +293,25 @@ class components_SSA():
         self.Mper = Mper
         self.Nstart = Nstart
         self.Nend = Nend
+
+def extract_attributes(SSA_object, SSA_info, attribute):
+    if(attribute == 't'):
+        #Trend
+        out = SSA_object.reconstruct(SSA_info.trend).values
+    elif(attribute == 'yp'):
+        #Yearly periodicity
+        out = SSA_object.reconstruct(SSA_info.Yper).values
+    elif(attribute == 'mp'):
+        #Monthly periodicity
+        out = SSA_object.reconstruct(SSA_info.Mper).values
+    elif(attribute == 'n'):
+        #Noise
+        out = SSA_object.reconstruct(slice(SSA_info.Nstart, SSA_info.Nend)).values
+    else:
+        print(f'The inserted attribute {attribute} is not correct')
+        return
+    #Take the name from SSA_info and place it as the series name
+    out = pd.Series(out)
+    out.name = SSA_info.name
+    out.index = pd.to_datetime(SSA_object.orig_TS.index).strftime('%Y-%m-%d')
+    return out

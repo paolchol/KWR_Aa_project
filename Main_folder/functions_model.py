@@ -86,7 +86,9 @@ def matrix_processing(df, train, n_features, lag_in = 1, lag_out = 1, y_loc = 0)
     #df: df containing y and the matrix of features
     #train: % of the time series for the train dataset (e.g. 0.7)
     #n_features: number of features in df, including the y variable
-    #y_loc: position of the variable to predict in df (default: 0)
+    #lag_in: window of input data to consider in the prediction
+    #lag_out: window for the prediction
+    #y_loc: position of the variable to predict in df (default: 0), not used
     
     val = df.values
     val = val.astype('float32')
@@ -175,8 +177,25 @@ def model_predict(model, test_X, test_y, ts_par):
     yhat = model.predict(test_X)   
     inv_yhat = yhat*ts_par[0]['std'][0] + ts_par[0]['mean'][0]
     inv_y = test_y*ts_par[0]['std'][0] + ts_par[0]['mean'][0]
-    rmse = sqrt(mean_squared_error(inv_y, inv_yhat))    
-    nrmse = round(rmse/(np.amax(inv_y) - np.amin(inv_y)), ndigits = 3)    
+    rmse = sqrt(mean_squared_error(inv_y, inv_yhat))
+    nrmse = round(rmse/(np.amax(inv_y) - np.amin(inv_y)), ndigits = 3)
     print('Test RMSE: %.3f' % rmse)
     print(f'Test NRMSE: {nrmse}')
     return inv_yhat, inv_y, rmse
+
+# %% Sum-up function
+
+def launch(df, m_par, code):
+    if(code == 't'): par = m_par.trend
+    elif(code == 'yp'): par = m_par.yper
+    elif(code == 'mp'): par = m_par.mper
+    elif(code == 'n'): par = m_par.noise
+    else:
+        print(f'The inserted code {code} is not correct')
+        return
+        
+    train_X, test_X, train_y, test_y, ts_par = matrix_processing(df, 0.7, 3, lag_in = 30, lag_out = 14)
+    fitted = fit_model(train_X, test_X, train_y, test_y, par)
+    yhat, y, rmse = model_predict(fitted, test_X, test_y, ts_par)
+    
+    return yhat, y
