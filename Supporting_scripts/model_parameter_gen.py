@@ -2,8 +2,6 @@
 """
 # Generation of 'model_parameters.p' #
 
-
-
 @author: colompa
 """
 
@@ -47,8 +45,3 @@ parameters[0].trend.batch = 72
 # .trend/.yper/.mper/.noise: SSA component of the station
 # .name/ecc.: actual parameter of the model
 
-
-
-#Change the code referring to model_par in model_experiments
-#Setup the overall code in model_main
-#Commit the changes
