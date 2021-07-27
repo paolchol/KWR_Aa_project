@@ -74,6 +74,13 @@ yper = dp.extract_attributes(SSA_components['log_ssa1'], SSA_information[0], 'yp
 mper = dp.extract_attributes(SSA_components['log_ssa1'], SSA_information[0], 'mp')
 noise = dp.extract_attributes(SSA_components['log_ssa1'], SSA_information[0], 'n')
 
+## Attribute model parameters definition ##
+t_par = single_par(SSA_information[0].name, 50, 1000, 72)
+yp_par = single_par(SSA_information[0].name, 50, 1000, 72)
+mp_par = single_par(SSA_information[0].name, 50, 1000, 72)
+n_par = single_par(SSA_information[0].name, 50, 1000, 72)
+m_par = model_par(SSA_information[0].name, trend = t_par, yper = yp_par, mper = mp_par, noise = n_par)
+
 ## Dataframe creation ##
 df_trend = dp.create_dataframe(trend, df_prec, df_evap, near_p, near_e)
 df_yper = dp.create_dataframe(yper, df_prec, df_evap, near_p, near_e)
@@ -81,49 +88,71 @@ df_mper = dp.create_dataframe(mper, df_prec, df_evap, near_p, near_e)
 df_noise = dp.create_dataframe(noise, df_prec, df_evap, near_p, near_e)
 
 ## Matrix pre-processing ##
+#Input:
+#   - train: 0.7, 70% of the dataset
+#   - n_features: 3 features considered (GW, precipitation, evaporation)
+#   - lag_in: 30, one month of observations used
+#   - lag_out: 14, two weeks of prediction
 # train_X, test_X, train_y, test_y, ts_par = matrix_processing(df_trend, 0.7, 3, 4, 5)
 #Final configuration below, now just 4 and 5 to be faster
-train_X, test_X, train_y, test_y, ts_par = md.matrix_processing(df_trend, 0.7, 3, lag_in = 30, lag_out = 14)
-
-## Model parameters definition ##
-m_par = single_par(SSA_information[0].name, 50, 1000, 72)
-#these model_par can already be defined before and put on a dictionary in the
-#same way done for SSA_information, so that each station has its parameters
-#associated
 
 ## Launch the model ##
-t_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par)
+#Trend
+train_X, test_X, train_y, test_y, ts_par = md.matrix_processing(df_trend, 0.7, 3, lag_in = 30, lag_out = 14)
+t_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par.trend)
 t_yhat, t_y, t_rmse = md.model_predict(t_fitted, test_X, test_y, ts_par)
 
 #Yper
 train_X, test_X, train_y, test_y, ts_par = md.matrix_processing(df_yper, 0.7, 3, lag_in = 30, lag_out = 14)
-m_par = model_par(SSA_information[0].name, 50, 1000, 72)
-y_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par)
+y_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par.yper)
 y_yhat, y_y, y_rmse = md.model_predict(y_fitted, test_X, test_y, ts_par)
 
 #Mper
 train_X, test_X, train_y, test_y, ts_par = md.matrix_processing(df_mper, 0.7, 3, lag_in = 30, lag_out = 14)
-m_par = model_par(SSA_information[0].name, 50, 1000, 72)
-m_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par)
+m_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par.mper)
 m_yhat, m_y, m_rmse = md.model_predict(m_fitted, test_X, test_y, ts_par)
 
 #Noise
 train_X, test_X, train_y, test_y, ts_par = md.matrix_processing(df_noise, 0.7, 3, lag_in = 30, lag_out = 14)
-n_par = model_par(SSA_information[0].name, 50, 1000, 72)
-n_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par)
+n_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par.noise)
 n_yhat, n_y, n_rmse = md.model_predict(n_fitted, test_X, test_y, ts_par)
 
 ## Regroup the extracted attributes ##
 prediction = t_yhat + y_yhat + m_yhat + n_yhat
 observation = t_y + y_y + m_y + n_y
 
+
+# %% Function to regroup these passages
+
+#input: attribute
+#output: yhat and y for the attribute
+
+def launch(attr, m_par, code):
+    if(code == 't'): par = m_par.trend
+    elif(code == 'yp'): par = m_par.yper
+    elif(code == 'mp'): par = m_par.mper
+    elif(code == 'n'): par = m_par.noise
+    else:
+        print(f'The inserted code {code} is not correct')
+        return
+    
+    train_X, test_X, train_y, test_y, ts_par = md.matrix_processing(df_trend, 0.7, 3, lag_in = 30, lag_out = 14)
+    fitted = md.fit_model(train_X, test_X, train_y, test_y, par)
+    yhat, y, rmse = md.model_predict(fitted, test_X, test_y, ts_par)
+    
+    return yhat, y
+
+# %% Show the result
 #How to show the results?
 # Check in time_series.ypinb
 
 
 # %% Save the models
 
+#I can't save the fitted model
+
 pkl.dump(fitted, open('fitted_1000.p', 'wb'))
+gg = pkl.load(open('fitted_1000.p', 'rb'))
 
 #%% Trials
 

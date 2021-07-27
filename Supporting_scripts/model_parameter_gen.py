@@ -33,6 +33,13 @@ for i in range(len(SSA_information)):
 
 #The parameters will have to be changed through the model's tuning
 
+# %% Save the model parameters
+
+pkl.dump(parameters, open('model_parameters.p', 'wb'))
+
+#To load:
+# m_par = pkl.load(open('model_parameters.p', 'rb'))
+
 # %% How to modify the parameters
 
 parameters[0].trend.batch = 72
@@ -42,6 +49,6 @@ parameters[0].trend.batch = 72
 
 
 
-#Change the code in model_experiments
-#Setup the code in model_main
-
+#Change the code referring to model_par in model_experiments
+#Setup the overall code in model_main
+#Commit the changes
