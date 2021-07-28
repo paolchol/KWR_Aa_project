@@ -259,7 +259,6 @@ def plot_SSA_results(SSA_object, Fs, noise = 0, label = 'SSA results', file = 't
                      xlab = "Date", ylab = "Water table level [MAMSL]"):
     import plotly.express as px
     from plotly.offline import plot
-    #import plotly.graph_objs as go
     
     df = pd.DataFrame({'Original': SSA_object.orig_TS.values})
     df.index = SSA_object.orig_TS.index
@@ -274,12 +273,6 @@ def plot_SSA_results(SSA_object, Fs, noise = 0, label = 'SSA results', file = 't
         for i, F in enumerate(Fs):
             name = f'F{i}'
             df[name] = SSA_object.reconstruct(F).values
-    #Would be nicer to have the original series with a bit of transparency
-    #Also to add labels to the axis and a title
-    # plt.title(label)
-    # plt.xlabel("Date")
-    # plt.ylabel("Level [MASL - Meters Above Sea Level]")
-    # Also save it with a name instead of temp-plot, and in a specified path
     figure = px.line(df)
     figure.update_layout(
         xaxis_title = xlab,
