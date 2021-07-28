@@ -77,6 +77,11 @@ def daily_mean_index(df):
     #other method: df.groupby(df.index.date).mean()
     return df_daily_avg
 
+def month_to_daily(df, value, col, m, y):
+    df.loc[(df.index.month == m) & (df.index.year == y), col] = \
+        round(value/len(df.loc[(df.index.month == m) & (df.index.year == y), col]), 3)
+    return df
+
 def create_list_files(path, extention):
     #Creates a list containing the paths of the file to import
     listfiles = []
@@ -198,7 +203,7 @@ def check_outliers(df):
         print(f'Column: {column}')
         print(f'Number of upper outliers: {sum(df[column] > upper_limit)}')
         print(f'Number of lower outliers: {sum(df[column] < lower_limit)}')
-        print(f'Percentage of outliers: {(sum(df[column] > upper_limit) + sum(df[column] < lower_limit))/len(df[column])}')
+        print(f'Percentage of outliers: {((sum(df[column] > upper_limit) + sum(df[column] < lower_limit))/len(df[column]))*100}')
 
 def remove_outliers(df, fill = np.nan):
     for column in df.columns:
@@ -315,3 +320,25 @@ def extract_attributes(SSA_object, SSA_info, attribute):
     out.name = SSA_info.name
     out.index = pd.to_datetime(SSA_object.orig_TS.index).strftime('%Y-%m-%d')
     return out
+
+# %% Visualization
+
+def fast_df_visualization(df):
+    from matplotlib import pyplot
+    pyplot.figure()
+    for i, column in enumerate(df.columns, start = 1):
+    	pyplot.subplot(len(df.columns), 1, i)
+    	pyplot.plot(df[column].values)
+    	pyplot.title(column, y = 0.5, loc = 'right')
+    pyplot.show()
+
+def interactive_df_visualization(df, xlab = 'X', ylab = 'Y', file = 'temp.html'):
+    import plotly.express as px
+    from plotly.offline import plot
+    figure = px.line(df)
+    figure.update_layout(
+        xaxis_title = xlab,
+        yaxis_title = ylab,
+        legend_title = "Variables"
+        )
+    plot(figure, filename = file)

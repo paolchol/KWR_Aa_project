@@ -167,7 +167,7 @@ def feature_scale(df):
     return scaled
 
 dp.check_outliers(df_evap)
-# fast_df_visualization(pd.DataFrame(m))
+# dp.fast_df_visualization(pd.DataFrame(m))
 
 x = 2
 val = df_trend.values

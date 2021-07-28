@@ -50,15 +50,6 @@ class single_par():
 
 # %% Functions
 
-def fast_df_visualization(df):
-    from matplotlib import pyplot
-    pyplot.figure()
-    for i, column in enumerate(df.columns, start = 1):
-    	pyplot.subplot(len(df.columns), 1, i)
-    	pyplot.plot(df[column].values)
-    	pyplot.title(column, y = 0.5, loc = 'right')
-    pyplot.show()
-
 def series_to_supervised(data, n_in = 1, n_out = 1, dropnan = True):
 	n_vars = 1 if type(data) is list else data.shape[1]
 	df = pd.DataFrame(data)
