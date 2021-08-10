@@ -30,6 +30,9 @@ List of functions:
 import pandas as pd
 import numpy as np
 
+#Tensor Flow
+import tensorflow as tf
+
 # %% Classes
 
 class model_par():
@@ -42,11 +45,12 @@ class model_par():
         self.noise = noise
 
 class single_par():
-    def __init__(self, name, neurons = 50, epochs = 50, batch_size = 72):
+    def __init__(self, name, neurons = 50, epochs = 50, batch_size = 72, learn_rate = 0.001):
         self.name = name
         self.neurons = neurons
         self.epochs = epochs
         self.batch = batch_size
+        self.learn_rate = learn_rate
 
 # %% Functions
 
@@ -136,13 +140,14 @@ def fit_model(train_X, test_X, train_y, test_y, m_par):
     from keras.layers import Dense
     from keras.layers import LSTM
     from matplotlib import pyplot
-    
+            
     # Design network
     model = Sequential()
     model.add(LSTM(m_par.neurons, input_shape = (train_X.shape[1], train_X.shape[2])))
     model.add(Dense(train_y.shape[1]))
+    # optimizer = tf.keras.optimizers.Adam(learning_rate = m_par.learn_rate)
     model.compile(loss = 'mae', optimizer = 'adam')
-    #Fit network
+    # Fit network
     history = model.fit(train_X, train_y, epochs = m_par.epochs,
                         batch_size = m_par.batch, validation_data = (test_X, test_y),
                         verbose = 2, shuffle = False)
@@ -159,13 +164,17 @@ def fit_model(train_X, test_X, train_y, test_y, m_par):
     pyplot.show()
     return model
 
+## Modify this function below to just get 30 values and predict the next 14 ##
+# The train and test analysis is already done in fit_model, so no need to get the RMSE
+
 def model_predict(model, test_X, test_y, ts_par):
     #https://machinelearningmastery.com/multivariate-time-series-forecasting-lstms-keras/
     from math import sqrt
     from sklearn.metrics import mean_squared_error
     
     # Make prediction
-    yhat = model.predict(test_X)   
+    yhat = model.predict(test_X)
+    
     inv_yhat = yhat*ts_par[0]['std'][0] + ts_par[0]['mean'][0]
     inv_y = test_y*ts_par[0]['std'][0] + ts_par[0]['mean'][0]
     rmse = sqrt(mean_squared_error(inv_y, inv_yhat))

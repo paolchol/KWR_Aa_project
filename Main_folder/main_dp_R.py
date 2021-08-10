@@ -20,7 +20,7 @@ Data pre-processing for the river data
 @author: colompa
 """
 
-# %% Libraries
+# %% Libraries and values definition
 
 import os
 import pandas as pd
@@ -34,6 +34,9 @@ import pyproj
 import functions_dp as dp
 from functions_dp import components_SSA
 from class_SSA import SSA
+
+#Path to the plot folder
+path_plot = r'D:\Users\colompa\Documents\KWR_project\Spyder_project\plots'
 
 # %% Load the river dataframe
 
@@ -88,6 +91,11 @@ dp.check_NAs(df_river)
 #Fill the NAs
 df_river = df_river.interpolate('linear', limit = 365)
 
+# %% Save the df
+
+pkl.dump(df_river, open('df_river_clean.p', 'wb'))
+# df_river = pkl.load(open('df_river_clean.p', 'rb'))
+
 # %% SSA on the flow
 
 #SSA components
@@ -96,6 +104,27 @@ process = df_river.iloc[:, 0][df_river.iloc[:, 0].notna()]
 SSA_flow = SSA(process, L)
 pkl.dump(SSA_flow, open('SSA_flow.p', 'wb'))
 
-#SSA information
-# SSA_flow_info
+#Obtain trend, periodicities and noise
+dp.plot_Wcorr_Wzomm(SSA_flow, 'River flow')
+dp.plot_Wcorr_Wzomm(SSA_flow, 'River flow', 49)
+dp.plot_Wcorr_Wzomm(SSA_flow, 'River flow', 9)
+
+#Group the first 10 elementary components
+F0 = 0
+F1 = [1, 2]
+F2 = [3, 4]
+F3 = [5, 6]
+F4 = 7
+F5 = [8, 9]
+Fs = [F0, F1, F2, F3, F4, F5]
+dp.plot_SSA_results(SSA_flow, Fs, label = 'River flow - SSA', file = f'{path_plot}\\river_SSA.html')
+
+#F0 is the overall trend
+#F1 the yearly periodicity
+#F2 the 6-month periodicity
+#The rest will be taken as the noise
+
+#Save these information
+SSA_flow_info = components_SSA(0, 'river', F0, F1, F2, 5, 365)
+pkl.dump(SSA_flow_info, open('SSA_flow_info.p', 'wb'))
 
