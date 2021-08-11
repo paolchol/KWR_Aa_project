@@ -75,10 +75,11 @@ mper = dp.extract_attributes(SSA_components['log_ssa1'], SSA_information[0], 'mp
 noise = dp.extract_attributes(SSA_components['log_ssa1'], SSA_information[0], 'n')
 
 ## Attribute model parameters definition ##
-t_par = single_par(SSA_information[0].name, 50, 1000, 72)
-yp_par = single_par(SSA_information[0].name, 50, 1000, 72)
-mp_par = single_par(SSA_information[0].name, 50, 1000, 72)
-n_par = single_par(SSA_information[0].name, 50, 1000, 72)
+# t_par = single_par(SSA_information[0].name, 50, 1000, 72)
+t_par = single_par(SSA_information[0].name, 50, 10, 72)
+yp_par = single_par(SSA_information[0].name, 50, 10, 72)
+mp_par = single_par(SSA_information[0].name, 50, 10, 72)
+n_par = single_par(SSA_information[0].name, 50, 10, 72)
 m_par = model_par(SSA_information[0].name, trend = t_par, yper = yp_par, mper = mp_par, noise = n_par)
 
 ## Dataframe creation ##
@@ -121,6 +122,15 @@ n_yhat, n_y, n_rmse = md.model_predict(n_fitted, test_X, test_y, ts_par)
 prediction = t_yhat + y_yhat + m_yhat + n_yhat
 observation = t_y + y_y + m_y + n_y
 
+dp.fast_df_visualization(df_trend)
+dp.interactive_df_visualization(df_trend)
+
+
+yy = md.model_predict(y_fitted, df_yper.iloc[-30: , [1,2]],  df_yper.iloc[-30: , 0], ts_par)
+
+yy = y_fitted.predict(df_yper.iloc[-30: , :])
+
+
 
 # %% Function to regroup these passages
 
@@ -151,8 +161,9 @@ def launch(attr, m_par, code):
 
 #I can't save the fitted model
 
-pkl.dump(fitted, open('fitted_1000.p', 'wb'))
+pkl.dump(t_fitted, open('t_fitted.p', 'wb'))
 gg = pkl.load(open('fitted_1000.p', 'rb'))
+
 
 #%% Trials
 
