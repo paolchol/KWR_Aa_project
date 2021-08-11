@@ -71,30 +71,32 @@ m_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par.mper)
 train_X, test_X, train_y, test_y, noise_par = md.matrix_processing(df_noise, 0.7, 6, lag_in = 30, lag_out = 14)
 n_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par.noise)
 
+# %% Fit the models using the last 70% for the training
+
+#Trend
+train_X, test_X, train_y, test_y, trend_par = md.matrix_processing(df_trend, 0.7, 6, lag_in = 30, lag_out = 14,
+                                                                   forward = False)
+t_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par.trend)
+#Yearly periodicity
+train_X, test_X, train_y, test_y, yper_par = md.matrix_processing(df_yper, 0.7, 6, lag_in = 30, lag_out = 14,
+                                                                  forward = False)
+y_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par.yper)
+#Six-months periodicity
+train_X, test_X, train_y, test_y, mper_par = md.matrix_processing(df_mper, 0.7, 6, lag_in = 30, lag_out = 14,
+                                                                  forward = False)
+m_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par.mper)
+#Noise
+train_X, test_X, train_y, test_y, noise_par = md.matrix_processing(df_noise, 0.7, 6, lag_in = 30, lag_out = 14,
+                                                                   forward = False)
+n_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par.noise)
+
 
 # %% Obtain the prediction
 
-def prediction(model, df, par, n_feat = 6, lag_in = 30, lag_out = 1):
-    df_scale = df.values
-    df_scale = (df_scale - par[0]['mean']) / par[0]['std']
-    
-    x = lag_in + lag_out
-    subset = df_scale[-x:, :]
-    obs = md.series_to_supervised(subset, lag_in, lag_out).values
-    n_obs = lag_in * n_feat
-    
-    obs = obs[:, :n_obs]
-    obs = obs.reshape(obs.shape[0], 30, 6)
-    
-    yhat = model.predict(obs)
-    yhat = np.transpose(yhat)
-    yhat = yhat*par[0]['std'][0] + par[0]['mean'][0]
-    return(yhat)
-
-that = prediction(t_fitted, df_trend, trend_par)
-yphat = prediction(y_fitted, df_yper, yper_par)
-mphat = prediction(m_fitted, df_mper, mper_par)
-nhat = prediction(n_fitted, df_noise, noise_par)
+that = md.prediction(t_fitted, df_trend, trend_par)
+yphat = md.prediction(y_fitted, df_yper, yper_par)
+mphat = md.prediction(m_fitted, df_mper, mper_par)
+nhat = md.prediction(n_fitted, df_noise, noise_par)
 
 y = df_river.values[-14:, 0]
 yhat = that + yphat + mphat + nhat
@@ -105,39 +107,24 @@ output.rename(columns = {0: 'yhat'}, inplace = True)
 
 dp.fast_df_visualization(output)
 
+#R2 square between the prediction and the observations
+from sklearn.metrics import r2_score
 
-# %% Draft 
-#Obtain the results for the trend
-df_scale = df_trend.values
-df_scale = (df_scale - ts_par[0]['mean']) / ts_par[0]['std']
+r2_forward = r2_score(output['y'], output['yhat'])
+print('** Forward result **')
+print(f'The R2 score of the 14 days prediction is {r2_forward}')
 
-# subset = df_scale[-44:, :]
-subset = df_scale[-31:, :]
-# obs = md.series_to_supervised(subset, 30, 14).values
-obs = md.series_to_supervised(subset, 30, 1).values
-n_obs = 30*6
-obs_1 = obs[:, :n_obs]
-obs_2 = obs_1.reshape(obs_1.shape[0], 30, 6)
+r2_back = r2_score(output['y'], output['yhat'])
+print('** Backward result **')
+print(f'The R2 score of the 14 days prediction is {r2_back}')
 
-yhat = t_fitted.predict(obs_2)
+#Better result with the 'backward' calibration
 
-yhat = np.transpose(yhat)
-yhat_1 = yhat*ts_par[0]['std'][0] + ts_par[0]['mean'][0]
-y = df_scale[-14:, 0].astype('float32')*ts_par[0]['std'][0] + ts_par[0]['mean'][0]
+# %% Save the fitted model
 
+from keras.models import load_model
 
-
-
-output = pd.DataFrame(yhat_1, index = df_trend.index[-14:])
-output['y'] = y
-output.rename(columns = {0: 'yhat'}, inplace = True)
-
-dp.fast_df_visualization(output)
-dp.fast_df_visualization(df_trend)
-
-
-# Run for all the components and put them together
-
-
-
-
+t_fitted.save('model.h5')
+prova_load = load_model('model.h5')
+prova_load.summary()
+prova_load.evaluate(test_X, test_y)

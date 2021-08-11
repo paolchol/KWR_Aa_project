@@ -19,6 +19,9 @@ List of functions:
     - fit_model:
         
     - model_predict:
+        Depracated
+    
+    - prediction:
         
 
 @author: colompa
@@ -29,9 +32,6 @@ List of functions:
 #General modules
 import pandas as pd
 import numpy as np
-
-#Tensor Flow
-import tensorflow as tf
 
 # %% Classes
 
@@ -77,21 +77,26 @@ def series_to_supervised(data, n_in = 1, n_out = 1, dropnan = True):
 		agg.dropna(inplace=True)
 	return agg
 
-def matrix_processing(df, train, n_features, lag_in = 1, lag_out = 1, y_loc = 0):
+def matrix_processing(df, train, n_features, lag_in = 1, lag_out = 1, forward = True):
     #df: df containing y and the matrix of features
     #train: % of the time series for the train dataset (e.g. 0.7)
     #n_features: number of features in df, including the y variable
     #lag_in: window of input data to consider in the prediction
     #lag_out: window for the prediction
-    #y_loc: position of the variable to predict in df (default: 0), not used
+    #forward: True means that the train set is taken from the 
     
     val = df.values
     val = val.astype('float32')
     
     #Split the dataset in train and test
     n = len(val)
-    train_df = val[0:int(n*train), :]
-    test_df = val[int(n*train):, :]
+    if(forward):
+        train_df = val[0:int(n*train), :]
+        test_df = val[int(n*train):, :]
+    else:
+        train_back = 1 - train
+        train_df = val[int(n*train_back):, :]
+        test_df = val[0:int(n*train_back):, :]
     
     #Feature scaling - Standardization
     train_mean = np.mean(train_df, axis = 0)
@@ -140,7 +145,7 @@ def fit_model(train_X, test_X, train_y, test_y, m_par):
     from keras.layers import Dense
     from keras.layers import LSTM
     from matplotlib import pyplot
-            
+    
     # Design network
     model = Sequential()
     model.add(LSTM(m_par.neurons, input_shape = (train_X.shape[1], train_X.shape[2])))
@@ -164,8 +169,30 @@ def fit_model(train_X, test_X, train_y, test_y, m_par):
     pyplot.show()
     return model
 
-## Modify this function below to just get 30 values and predict the next 14 ##
-# The train and test analysis is already done in fit_model, so no need to get the RMSE
+def prediction(model, df, par, n_feat = 6, lag_in = 30, lag_out = 1):
+    #model: fitted model
+    #df: non-scaled df containing the features
+    #par: parameters to perform the scaling (the same used to scale the training and test sets)
+    #n_feat: number of features in df, including the y variable
+    
+    #Take the values and rescale them
+    df_scale = df.values
+    df_scale = (df_scale - par[0]['mean']) / par[0]['std']
+    #Obtain the observations to make the prediction
+    x = lag_in + lag_out
+    subset = df_scale[-x:, :]
+    obs = series_to_supervised(subset, lag_in, lag_out).values
+    n_obs = lag_in * n_feat
+    obs = obs[:, :n_obs]
+    obs = obs.reshape(obs.shape[0], 30, 6)
+    #Make the prediction
+    yhat = model.predict(obs)
+    yhat = np.transpose(yhat)
+    yhat = yhat*par[0]['std'][0] + par[0]['mean'][0]
+    return yhat
+
+## Attention:
+## model_predict is deprecated, use prediction instead
 
 def model_predict(model, test_X, test_y, ts_par):
     #https://machinelearningmastery.com/multivariate-time-series-forecasting-lstms-keras/
