@@ -61,13 +61,6 @@ df_trend = pd.DataFrame(trend).join(df_river[exogeneous])
 df_yper = pd.DataFrame(yper).join(df_river[exogeneous])
 df_mper = pd.DataFrame(mper).join(df_river[exogeneous])
 
-# %% Noise classification
-
-val = trend + yper + mper
-df_noise = pd.DataFrame({'val': val, 'noise': noise})
-
-ngroups, nbounds = md.noise_group(df_noise)
-
 # %% Fit the models
 # The last 70% of data is used to train the model, while the first 30% is used for validate it
 
@@ -100,44 +93,75 @@ m_fitted = load_model(f'{path_load}\model_Rlevel_mper.h5')
 # %% Obtain the prediction
 #1-day ahead prediction for the whole period
 
-trend_pred
-yper_pred
-mper_pred
+def Xy_1daypred(df, n_features, par, lag_in = 30, lag_out = 1):
+    val = df.values
+    val = val.astype('float32')
+    val = (val - par[0]['mean'])/par[0]['std']
+    
+    val = md.series_to_supervised(val, lag_in, lag_out)
+    val = val.values
+    
+    n_obs = lag_in * n_features
+    n_pred = lag_out * n_features
+    pos = [n_obs]
+    for i in range(int(n_pred/n_features)):
+        pos.append(pos[i] + n_features)
+        if(pos[i + 1] >= (n_pred + n_obs)):
+            pos.pop(i + 1)
+    X, y = val[:, :n_obs], val[:, pos]
+    X = X.reshape((X.shape[0], lag_in, n_features))
+    return X, y
 
-that = md.prediction(t_fitted, df_trend, trend_par, n_feat = Nf, lag_in = IN, lag_out = OUT)
-yphat = md.prediction(y_fitted, df_yper, yper_par, lag_in = IN, lag_out = OUT)
-mphat = md.prediction(m_fitted, df_mper, mper_par, lag_in = IN, lag_out = OUT)
+trend_X, trend_y = Xy_1daypred(df_trend, 7, trend_par, lag_out = 1)
+yper_X, yper_y = Xy_1daypred(df_yper, 7, yper_par)
+mper_X, mper_y = Xy_1daypred(df_mper, 7, mper_par)
 
-that = t_fitted.predict(trend_pred)
-
-
-#Y has to be change to be the sum of trend and periodicity
-y = df_trend.values[-OUT:, 0] # + etc. etc.
-
+that = t_fitted.predict(trend_X)
+yphat = y_fitted.predict(yper_X)
+mphat = m_fitted.predict(mper_X)
 
 yhat = that + yphat + mphat
-noisebands = md.noise_variation(yhat, ngroups, nbounds)
 
-output = pd.DataFrame(yhat, index = df_river.index[-14:])
+# %% Create the dataframe
+
+y = trend_y + yper_y + mper_y
+
+output = pd.DataFrame(yhat, index = df_river.index[30:])
 output.rename(columns = {0: 'yhat'}, inplace = True)
 output['y'] = y
-output['flow'] = df_river.values[-14:, 1]
-output['prec'] = df_river.values[-14:, 2]
-output['ev'] = df_river.values[-14:, 3]
-output['extr1'] = df_river.values[-14:, 4]
-output['extr2'] = df_river.values[-14:, 5]
-output['extr3'] = df_river.values[-14:, 6]
+
+# Noise classification
+val = output.y
+df_noise = pd.DataFrame({'val': val, 'noise': noise})
+ngroups, nbounds = md.noise_group(df_noise)
+
+noisebands = md.noise_variation(output.yhat, ngroups, nbounds,
+                                name = 'yhat')
+
+
+
+nb = noisebands.values
+nb = nb.astype('float32')
+nb = pd.DataFrame(nb)
+
+#change the names as in noisebands
+#join on yhat
+
+ot = output.join(noisebands, on = 'yhat')
+
+
+# %% Plot
 
 dp.fast_df_visualization(output)
+dp.interactive_df_visualization(output)
 
+dp.interactive_df_visualization(output, xlab='Days', ylab='River flow [m3/s]', file = r'D:\Users\colompa\Documents\KWR_project\Spyder_project\plots\river_100.html')
 
+# %% Evaluate
 #R2 square between the prediction and the observations
 from sklearn.metrics import r2_score
 
 r2 = r2_score(output['y'], output['yhat'])
 print(f'The R2 score of the 14 days prediction is {r2}')
 
-dp.interactive_df_visualization(output, xlab='Days', ylab='River flow [m3/s]', file = r'D:\Users\colompa\Documents\KWR_project\Spyder_project\plots\river_100.html')
 
-dp.interactive_df_visualization(df_trend)
-dp.interactive_df_visualization(df_noise)

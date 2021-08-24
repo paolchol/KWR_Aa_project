@@ -71,57 +71,14 @@ gstd = groups.std()['noise']
 
 # %% Functions
 
-def noise_group(df, valcol = 0, ngroup = 10):
-    #df: pandas dataframe containing the value column and the noise column
-    #valcol: position of the value column
-    #ngroup: number of groups to be created (number of quantiles to consider)
-    
-    df.columns = ['val', 'noise'] if valcol == 0 else ['noise', 'val']
-    groups = df.groupby(pd.qcut(df.val, ngroup, labels = False))
-    bounds = pd.qcut(df.val, ngroup, labels = False, retbins = True)[1]
-    return groups, bounds
-
-#This function doesn't work yet
-def single_noise_variation(pred, groups, bounds):
-    i = 0
-    for bound in bounds:
-        if(pred >= bound): classs = i
-        i += 1
-    gmean = groups.mean()['noise']
-    gstd = groups.std()['noise']
-    maxnoise = pd.DataFrame(gmean + 3*gstd)
-    
-    highval = pred + maxnoise.iloc[classs, 0]
-    lowval = pred - maxnoise.iloc[classs, 0]
-    bands = pd.DataFrame[{'highval': highval, 'lowval': lowval}]    
-    return classs, bands
-
-def noise_variation(pred, groups, bounds, coeff = 1, single = False):
-    #pred: Series containing the prediction
-    #groups: variable and noise grouped
-    #bounds: boundaries of the groups
-    
-    if(single): return single_noise_variation(pred, groups, bounds)
-    
-    classes = pd.DataFrame(pd.cut(pred, bounds, labels = False))
-    gmean = groups.mean()['noise']
-    gstd = groups.std()['noise']
-    maxnoise = pd.DataFrame({'maxnoise': gmean + coeff*gstd})
-    minnoise = pd.DataFrame({'minnoise': gmean - coeff*gstd})
-    
-    bands = classes.join(maxnoise, on = 'val')
-    bands = bands.join(minnoise, on = 'val')
-    bands['highband'] = pred + bands['maxnoise']
-    bands['lowband'] = pred + bands['minnoise'] #bands['noise']
-    bands['val'] = pred
-    bands.drop(['maxnoise', 'minnoise'], 1, inplace = True)
-    
-    return bands
+# md.noise_group: creates the groups and the boundaries of the noise based
+#   on the variable
+# md.noise_variation: creates the bands to plot the results
 
 # %% To use the functions
 
-groups, bands = noise_group(df)
+groups, bands = md.noise_group(df)
 pred = df.val
-bands = noise_variation(pred, groups, bounds)
+bands = md.noise_variation(pred, groups, bounds)
 dp.interactive_df_visualization(bands)
 
