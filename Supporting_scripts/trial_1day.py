@@ -54,6 +54,12 @@ m_par = model_par(SSA_information.name, trend = t_par, yper = yp_par, mper = mp_
 #For example, the resulting parameters from the tuning
 # m_par = pkl.load(open('model_parameters_R.p','rb'))
 
+# %% Noise classification
+
+val = trend + yper + mper
+df_noise = pd.DataFrame({'val': val, 'noise': noise})
+ngroups, nbounds = md.noise_group(df_noise)
+
 # %% Dataframe creation
 
 exogeneous = ['flow', 'prec','evap', 'extr1', 'extr2', 'extr3']
@@ -112,50 +118,72 @@ def Xy_1daypred(df, n_features, par, lag_in = 30, lag_out = 1):
     X = X.reshape((X.shape[0], lag_in, n_features))
     return X, y
 
+def rescale(val, par):
+    val = val*par[0]['std'][0] + par[0]['mean'][0]
+    return val
+
 trend_X, trend_y = Xy_1daypred(df_trend, 7, trend_par, lag_out = 1)
 yper_X, yper_y = Xy_1daypred(df_yper, 7, yper_par)
 mper_X, mper_y = Xy_1daypred(df_mper, 7, mper_par)
 
 that = t_fitted.predict(trend_X)
+that = rescale(that, trend_par)
 yphat = y_fitted.predict(yper_X)
+yphat = rescale(yphat, yper_par)
 mphat = m_fitted.predict(mper_X)
+mphat = rescale(mphat, mper_par)
 
 yhat = that + yphat + mphat
 
-# %% Create the dataframe
+# %% Create the output dataframe
 
-y = trend_y + yper_y + mper_y
+y = rescale(trend_y, trend_par) + rescale(yper_y, yper_par) + rescale(mper_y, mper_par)
 
 output = pd.DataFrame(yhat, index = df_river.index[30:])
 output.rename(columns = {0: 'yhat'}, inplace = True)
 output['y'] = y
 
-# Noise classification
-val = output.y
-df_noise = pd.DataFrame({'val': val, 'noise': noise})
-ngroups, nbounds = md.noise_group(df_noise)
-
 noisebands = md.noise_variation(output.yhat, ngroups, nbounds,
                                 name = 'yhat')
 
+output['highband'] = noisebands['highband']
+output['lowband'] = noisebands['lowband']
 
-
-nb = noisebands.values
-nb = nb.astype('float32')
-nb = pd.DataFrame(nb)
-
-#change the names as in noisebands
-#join on yhat
-
-ot = output.join(noisebands, on = 'yhat')
-
+output['']
 
 # %% Plot
 
 dp.fast_df_visualization(output)
 dp.interactive_df_visualization(output)
 
-dp.interactive_df_visualization(output, xlab='Days', ylab='River flow [m3/s]', file = r'D:\Users\colompa\Documents\KWR_project\Spyder_project\plots\river_100.html')
+dp.interactive_df_visualization(output, xlab='Days', ylab='River water level [m]', file = r'D:\Users\colompa\Documents\KWR_project\Spyder_project\plots\river1dayahead.html')
+
+#With confidence interval
+output = output.dropna(subset = ['highband', 'lowband'])
+
+import plotly.graph_objects as go
+from plotly.offline import plot
+
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=output.index, y = output.highband.values,
+              fill = None,
+              mode = 'lines',
+              line_color = 'indigo',
+              ))
+fig.add_trace(go.Scatter(x=output.index, y = output.lowband.values,
+              fill = 'tonexty',
+              mode = 'lines',
+              line_color = 'indigo',
+              ))
+fig.add_trace(go.Scatter(x=output.index, y = output.yhat.values,
+              fill = None,
+              mode = 'lines',
+              line_color = 'red',
+              ))
+plot(fig)
+
+
+
 
 # %% Evaluate
 #R2 square between the prediction and the observations
