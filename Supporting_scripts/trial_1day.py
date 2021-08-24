@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Model construction operated fo the river flow
+Trial: 1-day ahead prediction of river's water level
+
+Trial script to perform a 1-day ahead prediction on the whole dataset,
+with 30 days of data
 
 @author: colompa
 """
@@ -76,25 +79,16 @@ forwardTF = False   #condition to take the first trainp as train set (True) or t
 oneday = np.take(np.where(OUT == 1, True, False), 0)
 
 #Trend
-train_X, test_X, train_y, test_y, trend_par = md.matrix_processing(df_trend, trainp, Nf, lag_in = IN, lag_out = OUT,
+_, _, _, _, trend_par = md.matrix_processing(df_trend, trainp, Nf, lag_in = IN, lag_out = OUT,
                                                                    forward = forwardTF)
-t_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par.trend, oneday = oneday)
 #Yearly periodicity
-train_X, test_X, train_y, test_y, yper_par = md.matrix_processing(df_yper, trainp, Nf, lag_in = IN, lag_out = OUT,
+_, _, _, _, yper_par = md.matrix_processing(df_yper, trainp, Nf, lag_in = IN, lag_out = OUT,
                                                                   forward = forwardTF)
-y_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par.yper, oneday = oneday)
 #Six-months periodicity
-train_X, test_X, train_y, test_y, mper_par = md.matrix_processing(df_mper, trainp, Nf, lag_in = IN, lag_out = OUT,
+_, _, _, _, mper_par = md.matrix_processing(df_mper, trainp, Nf, lag_in = IN, lag_out = OUT,
                                                                   forward = forwardTF)
-m_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par.mper, oneday = oneday)
 
-
-# %% Save the fitted models
-
-path_save = r'D:\Users\colompa\Documents\KWR_project\Spyder_project\Saved_model'
-t_fitted.save(f'{path_save}\model_Rlevel_trend.h5')
-y_fitted.save(f'{path_save}\model_Rlevel_yper.h5')
-m_fitted.save(f'{path_save}\model_Rlevel_mper.h5')
+# %% Load the fitted models
 
 #To load them:
 from keras.models import load_model
@@ -102,18 +96,19 @@ path_load = r'D:\Users\colompa\Documents\KWR_project\Spyder_project\Saved_model'
 t_fitted = load_model(f'{path_load}\model_Rlevel_trend.h5')
 y_fitted = load_model(f'{path_load}\model_Rlevel_yper.h5')
 m_fitted = load_model(f'{path_load}\model_Rlevel_mper.h5')
-# n_fitted = load_model(f'{path_load}\model_R_noise.h5')
 
 # %% Obtain the prediction
-#This obtains the prection for the last OUT days of the whole dataset, and plots
-#the results. Standard parameters of predict: lag_in = 30, lag_out = 1
-#do it predicts for 1 day-ahead usign 30 days
+#1-day ahead prediction for the whole period
+
+trend_pred
+yper_pred
+mper_pred
 
 that = md.prediction(t_fitted, df_trend, trend_par, n_feat = Nf, lag_in = IN, lag_out = OUT)
 yphat = md.prediction(y_fitted, df_yper, yper_par, lag_in = IN, lag_out = OUT)
 mphat = md.prediction(m_fitted, df_mper, mper_par, lag_in = IN, lag_out = OUT)
 
-
+that = t_fitted.predict(trend_pred)
 
 
 #Y has to be change to be the sum of trend and periodicity
@@ -146,44 +141,3 @@ dp.interactive_df_visualization(output, xlab='Days', ylab='River flow [m3/s]', f
 
 dp.interactive_df_visualization(df_trend)
 dp.interactive_df_visualization(df_noise)
-
-
-# %% trials
-
-#Trend
-train_X, test_X, train_y, test_y, trend_par = md.matrix_processing(df_trend, 0.7, 6, lag_in = 30, lag_out = 1,
-                                                                   forward = False)
-
-#For one day ahead prediction, 
-t_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par.trend, oneday = True)
-
-
-
-
-#Yearly periodicity
-train_X, test_X, train_y, test_y, yper_par = md.matrix_processing(df_yper, 0.7, 6, lag_in = 30, lag_out = 1,
-                                                                  forward = False)
-y_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par.yper)
-#Six-months periodicity
-train_X, test_X, train_y, test_y, mper_par = md.matrix_processing(df_mper, 0.7, 6, lag_in = 30, lag_out = 1,
-                                                                  forward = False)
-m_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par.mper)
-#Noise
-train_X, test_X, train_y, test_y, noise_par = md.matrix_processing(df_noise, 0.7, 6, lag_in = 30, lag_out = 1,
-                                                                   forward = False)
-n_fitted = md.fit_model(train_X, test_X, train_y, test_y, m_par.noise)
-
-t_fitted.evaluate(test_X, test_y)
-
-that = md.prediction(t_fitted, df_trend, trend_par)
-y = df_trend.values[-2:, 0]
-outtrend = pd.DataFrame(that, index = df_trend.index[-2:])
-outtrend['y'] = y
-dp.interactive_df_visualization(outtrend)
-
-pred = t_fitted.predict(train_X)
-
-
-
-dp.interactive_df_visualization(that)
-dp.interactive_df_visualization(df_trend)

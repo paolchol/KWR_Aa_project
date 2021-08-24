@@ -140,7 +140,7 @@ def matrix_processing(df, train, n_features, lag_in = 1, lag_out = 1, forward = 
     #It doesn't seem like it needs to be reshaped
     return train_X, test_X, train_y, test_y, param
 
-def fit_model(train_X, test_X, train_y, test_y, m_par):
+def fit_model(train_X, test_X, train_y, test_y, m_par, oneday = False):
     from keras.models import Sequential
     from keras.layers import Dense
     from keras.layers import LSTM
@@ -149,7 +149,10 @@ def fit_model(train_X, test_X, train_y, test_y, m_par):
     # Design network
     model = Sequential()
     model.add(LSTM(m_par.neurons, input_shape = (train_X.shape[1], train_X.shape[2])))
-    model.add(Dense(train_y.shape[1]))
+    if oneday:
+        shp = 1
+    else: shp = train_y.shape[1]
+    model.add(Dense(shp))
     # optimizer = tf.keras.optimizers.Adam(learning_rate = m_par.learn_rate)
     model.compile(loss = 'mae', optimizer = 'adam')
     # Fit network
@@ -181,10 +184,13 @@ def prediction(model, df, par, n_feat = 6, lag_in = 30, lag_out = 1):
     #Obtain the observations to make the prediction
     x = lag_in + lag_out
     subset = df_scale[-x:, :]
+    
+    #Check this above
+    
     obs = series_to_supervised(subset, lag_in, lag_out).values
     n_obs = lag_in * n_feat
     obs = obs[:, :n_obs]
-    obs = obs.reshape(obs.shape[0], 30, 6)
+    obs = obs.reshape(obs.shape[0], lag_in, n_feat)
     #Make the prediction
     yhat = model.predict(obs)
     yhat = np.transpose(yhat)
@@ -209,6 +215,57 @@ def model_predict(model, test_X, test_y, ts_par):
     print('Test RMSE: %.3f' % rmse)
     print(f'Test NRMSE: {nrmse}')
     return inv_yhat, inv_y, rmse
+
+# %% Noise classification
+
+def noise_group(df, valcol = 0, ngroup = 10):
+    #df: pandas dataframe containing the value column and the noise column
+    #valcol: position of the value column
+    #ngroup: number of groups to be created (number of quantiles to consider)
+    
+    df.columns = ['val', 'noise'] if valcol == 0 else ['noise', 'val']
+    groups = df.groupby(pd.qcut(df.val, ngroup, labels = False))
+    bounds = pd.qcut(df.val, ngroup, labels = False, retbins = True)[1]
+    return groups, bounds
+
+# single_noise_variation doesn't really work, modify
+def single_noise_variation(pred, groups, bounds):
+    i = 0
+    for bound in bounds:
+        if(pred >= bound): classs = i
+        i += 1
+    gmean = groups.mean()['noise']
+    gstd = groups.std()['noise']
+    maxnoise = pd.DataFrame(gmean + 3*gstd)
+    
+    highval = pred + maxnoise.iloc[classs, 0]
+    lowval = pred - maxnoise.iloc[classs, 0]
+    bands = pd.DataFrame[{'highval': highval, 'lowval': lowval}]   
+    return classs, bands
+
+def noise_variation(pred, groups, bounds, single = False):
+    #pred: Series containing the prediction
+    #groups: variable and noise grouped
+    #bounds: boundaries of the groups
+    
+    if(single): return single_noise_variation(pred, groups, bounds)
+    
+    classes = pd.DataFrame(pd.cut(pred, bounds, labels = False))
+    gmean = groups.mean()['noise']
+    gstd = groups.std()['noise']
+    maxnoise = pd.DataFrame({'maxnoise': gmean + 3*gstd})
+    minnoise = pd.DataFrame({'minnoise': gmean - 3*gstd})
+    
+    bands = classes.join(maxnoise, on = 'val')
+    bands = bands.join(minnoise, on = 'val')
+    
+    #Is this correct??
+    bands['highband'] = pred + bands['maxnoise']
+    bands['lowband'] = pred + bands['minnoise']
+    bands['val'] = pred
+    bands.drop(['maxnoise', 'minnoise'], 1, inplace = True)
+    
+    return bands
 
 # %% Sum-up function
 

@@ -52,8 +52,8 @@ for key, grp in groups:
     print(f'\nGroup: {key}\n{grp}')
 
 #Print the boundaries
-# bound[0] is the minimum of the whole series, while bound[9] is the maximum
-print(bound)
+# bounds[0] is the minimum of the whole series, while bound[9] is the maximum
+print(bounds)
 
 # %% Noise description
 
@@ -69,9 +69,7 @@ gmin = groups.min()['noise']
 gmax = groups.max()['noise']
 gstd = groups.std()['noise']
 
-
 # %% Functions
-
 
 def noise_group(df, valcol = 0, ngroup = 10):
     #df: pandas dataframe containing the value column and the noise column
@@ -83,6 +81,7 @@ def noise_group(df, valcol = 0, ngroup = 10):
     bounds = pd.qcut(df.val, ngroup, labels = False, retbins = True)[1]
     return groups, bounds
 
+#This function doesn't work yet
 def single_noise_variation(pred, groups, bounds):
     i = 0
     for bound in bounds:
@@ -94,13 +93,10 @@ def single_noise_variation(pred, groups, bounds):
     
     highval = pred + maxnoise.iloc[classs, 0]
     lowval = pred - maxnoise.iloc[classs, 0]
-    bands = pd.DataFrame[{'highval': highval, 'lowval': lowval}]
-    
-    #modify, doesn't work
-    
+    bands = pd.DataFrame[{'highval': highval, 'lowval': lowval}]    
     return classs, bands
 
-def noise_variation(pred, groups, bounds, single = False):
+def noise_variation(pred, groups, bounds, coeff = 1, single = False):
     #pred: Series containing the prediction
     #groups: variable and noise grouped
     #bounds: boundaries of the groups
@@ -110,34 +106,22 @@ def noise_variation(pred, groups, bounds, single = False):
     classes = pd.DataFrame(pd.cut(pred, bounds, labels = False))
     gmean = groups.mean()['noise']
     gstd = groups.std()['noise']
-    maxnoise = pd.DataFrame(gmean + 3*gstd)
+    maxnoise = pd.DataFrame({'maxnoise': gmean + coeff*gstd})
+    minnoise = pd.DataFrame({'minnoise': gmean - coeff*gstd})
     
     bands = classes.join(maxnoise, on = 'val')
-    bands['highband'] = pred + bands['noise']
-    bands['lowband'] = pred - bands['noise']
+    bands = bands.join(minnoise, on = 'val')
+    bands['highband'] = pred + bands['maxnoise']
+    bands['lowband'] = pred + bands['minnoise'] #bands['noise']
     bands['val'] = pred
-    bands.drop('noise', 1, inplace = True)
+    bands.drop(['maxnoise', 'minnoise'], 1, inplace = True)
     
     return bands
 
+# %% To use the functions
 
-# %% Drafts
+groups, bands = noise_group(df)
 pred = df.val
-c = single_noise_variation(1.5, groups, bounds)
-
-x = pd.cut(df.val, bounds, labels = False)
-x = pd.DataFrame(x)
-
-
-dp.fast_df_visualization(df)
-x.plot()
-#I obtain a list with the corresponding class of each value
-
-gmean = pd.DataFrame(gmean)
-y = x.join(gmean, on = 'val')
-y.plot()
-dp.interactive_df_visualization(y)
-
-
-
+bands = noise_variation(pred, groups, bounds)
+dp.interactive_df_visualization(bands)
 
