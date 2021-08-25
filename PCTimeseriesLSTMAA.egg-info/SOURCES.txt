@@ -1,0 +1,17 @@
+LICENSE
+README.md
+setup.py
+PCTimeseriesLSTMAA/__init__.py
+PCTimeseriesLSTMAA.egg-info/PKG-INFO
+PCTimeseriesLSTMAA.egg-info/SOURCES.txt
+PCTimeseriesLSTMAA.egg-info/dependency_links.txt
+PCTimeseriesLSTMAA.egg-info/requires.txt
+PCTimeseriesLSTMAA.egg-info/top_level.txt
+PCTimeseriesLSTMAA/main/__init__.py
+PCTimeseriesLSTMAA/main/class_SSA.py
+PCTimeseriesLSTMAA/main/functions_dp.py
+PCTimeseriesLSTMAA/main/functions_model.py
+PCTimeseriesLSTMAA/main/main_dp_GW.py
+PCTimeseriesLSTMAA/main/main_dp_R.py
+PCTimeseriesLSTMAA/main/main_model_GW.py
+PCTimeseriesLSTMAA/main/main_model_R.py
