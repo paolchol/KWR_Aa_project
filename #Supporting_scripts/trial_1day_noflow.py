@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+1-day prediction withouth the flow
+
+@author: colompa
+"""
+
+# -*- coding: utf-8 -*-
+"""
 Trial: 1-day ahead prediction of river's water level
 
 Trial script to perform a 1-day ahead prediction on the whole dataset,
@@ -62,7 +69,10 @@ ngroups, nbounds = md.noise_group(df_noise)
 
 # %% Dataframe creation
 
-exogeneous = ['flow', 'prec','evap', 'extr1', 'extr2', 'extr3']
+#Remove the flow column from df_river dataframe
+df_river.drop('flow', 1, inplace = True)
+
+exogeneous = ['prec','evap', 'extr1', 'extr2', 'extr3']
 df_trend = pd.DataFrame(trend).join(df_river[exogeneous])
 df_yper = pd.DataFrame(yper).join(df_river[exogeneous])
 df_mper = pd.DataFrame(mper).join(df_river[exogeneous])
@@ -92,9 +102,9 @@ _, _, _, _, mper_par = md.matrix_processing(df_mper, trainp, Nf, lag_in = IN, la
 #To load them:
 from keras.models import load_model
 path_load = r'D:\Users\colompa\Documents\KWR_project\Spyder_project\Saved_model'
-t_fitted = load_model(f'{path_load}\model_Rlevel_trend.h5')
-y_fitted = load_model(f'{path_load}\model_Rlevel_yper.h5')
-m_fitted = load_model(f'{path_load}\model_Rlevel_mper.h5')
+t_fitted = load_model(f'{path_load}\model_Rlevel_trend_noflow.h5')
+y_fitted = load_model(f'{path_load}\model_Rlevel_yper_noflow.h5')
+m_fitted = load_model(f'{path_load}\model_Rlevel_mper_noflow.h5')
 
 # %% Obtain the prediction
 #1-day ahead prediction for the whole period
@@ -122,9 +132,9 @@ def rescale(val, par):
     val = val*par[0]['std'][0] + par[0]['mean'][0]
     return val
 
-trend_X, trend_y = Xy_1daypred(df_trend, 7, trend_par, lag_out = 1)
-yper_X, yper_y = Xy_1daypred(df_yper, 7, yper_par)
-mper_X, mper_y = Xy_1daypred(df_mper, 7, mper_par)
+trend_X, trend_y = Xy_1daypred(df_trend, Nf, trend_par)
+yper_X, yper_y = Xy_1daypred(df_yper, Nf, yper_par)
+mper_X, mper_y = Xy_1daypred(df_mper, Nf, mper_par)
 
 that = t_fitted.predict(trend_X)
 that = rescale(that, trend_par)
@@ -152,6 +162,7 @@ output['lowband'] = noisebands['lowband']
 # %% Plot
 
 dp.fast_df_visualization(output)
+# dp.interactive_df_visualization(output)
 
 #With confidence interval
 output = output.dropna(subset = ['highband', 'lowband'])
@@ -189,13 +200,14 @@ fig.add_trace(go.Scatter(x=output.index, y = output.yhat.values,
             line_color = 'red',
             ))
 fig.update_layout(
-            title = 'River water height - 1-Day ahead prediction, with flow as an additional feature',
+            title = 'River water height - 1-Day ahead prediction, withouth flow as a feature',
             xaxis_title = 'Date',
             yaxis_title = '[m]',
             legend_title = 'Legend'
             )
 plot(fig)
-plot(fig, filename = '1day_flow.html')
+plot(fig, filename = '1day_noflow.html')
+
 
 # %% Evaluate
 #R2 square between the prediction and the observations
