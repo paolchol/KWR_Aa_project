@@ -1,5 +1,4 @@
 # Project @ KWR, 2021: Deep learning model for hydrological values prediction
-# Still in progress
 ## Author: Paolo Colombo, Supervisor: Xin Tian
 
 Python scripts to develop a deep learning model to forecast hydrological variables in the Drenthe province, The Netherlands.
